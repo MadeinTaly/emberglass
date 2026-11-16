@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- InfiRay Tiny1-C family behind a Realtek UVC bridge (P2 Pro, TC001, Tiny1-C modules) -->
+    <usb-device vendor-id="3034" product-id="22576" /> <!-- 0bda:5830 -->
+    <usb-device vendor-id="3034" product-id="22592" /> <!-- 0bda:5840 -->
+</resources>

@@ -1,0 +1,8 @@
+# vendor app: proprietary, never commit
+*.xapk
+
+build/
+*.apk
+*.idsig
+*.keystore
+.signing.env

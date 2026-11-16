@@ -1,0 +1,951 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Emberglass</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 108 108'%3E %3Crect width='108' height='108' rx='24' fill='#0F0415'/%3E %3Ccircle cx='54' cy='54' r='21' fill='#6A0A8A'/%3E %3Ccircle cx='54' cy='54' r='16' fill='#E8452E'/%3E %3Ccircle cx='54' cy='54' r='11' fill='#F98B0A'/%3E %3Ccircle cx='54' cy='54' r='6.5' fill='#FCCC2A'/%3E %3Ccircle cx='54' cy='54' r='3' fill='#FFFFE0'/%3E %3Cpath d='M30,41 L30,30 L41,30 M67,30 L78,30 L78,41 M78,67 L78,78 L67,78 M41,78 L30,78 L30,67' fill='none' stroke='#F2ECF5' stroke-width='4.5' stroke-linecap='square'/%3E %3C/svg%3E">
+<meta name="description" content="Live thermal view from the phone camera, with temperatures and controls.">
+<style>
+
+@font-face { font-family: "Bungee"; src: url("fonts/bungee.woff2") format("woff2"); font-weight: 400; font-display: swap; }
+@font-face { font-family: "Chivo"; src: url("fonts/chivo.woff2") format("woff2"); font-weight: 400 900; font-display: swap; }
+@font-face { font-family: "Silkscreen"; src: url("fonts/silkscreen.woff2") format("woff2"); font-weight: 700; font-display: swap; }
+
+:root {
+  color-scheme: dark;
+  --space-3xs: 2px; --space-2xs: 4px; --space-xs: 8px; --space-sm: 12px; --space-md: 16px; --space-lg: 24px; --space-xl: 40px; --space-2xl: 64px;
+  --text-xs: 0.75rem; --text-sm: 0.875rem; --text-md: 1rem; --text-lg: 1.2rem; --text-xl: 1.44rem; --text-2xl: 1.728rem; --text-3xl: 2.074rem;
+  --text-figure: 2.5rem;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --dur-micro: 120ms; --dur-short: 220ms;
+  --color-error: oklch(72% 0.15 27);
+  --container: 1180px; --gutter: 32px; --gap-columns: 24px;
+  --color-paper: oklch(14% 0.04 312); --color-paper-2: oklch(18.5% 0.042 312); --color-paper-3: oklch(23% 0.045 312);
+  --color-ink: oklch(95% 0.014 315); --color-ink-2: oklch(87% 0.018 315); --color-muted: oklch(71% 0.024 315);
+  --color-rule: oklch(34% 0.05 312);
+  --color-accent: oklch(66% 0.215 40); --color-accent-2: oklch(88% 0.195 115); --color-accent-ink: oklch(14% 0.04 312);
+  --color-focus: oklch(88% 0.195 115);
+  --color-crt-r: oklch(63% 0.24 25); --color-crt-g: oklch(80% 0.25 140); --color-crt-b: oklch(60% 0.24 265); --color-crt-c: oklch(78% 0.14 200); --color-shade: oklch(8% 0.02 315);
+  --color-screen: oklch(4% 0.01 312);
+  --font-display: "Bungee", "Impact", sans-serif; --font-body: "Chivo", ui-sans-serif, system-ui, sans-serif; --font-outlier: "Silkscreen", ui-monospace, monospace;
+  --radius-card: 4px; --rule-hair: 1px; --rule-bar: 2px;
+  --shadow-press: 5px 5px 0 var(--color-accent-2);
+  /* the camera palettes as rendered on the phone (Thermal.java), sampled in four steps */
+  --iron-1: #1f0a5c; --iron-2: #b5187a; --iron-3: #f98b0a; --iron-4: #ffffe0;
+  --rainbow-1: #0000ff; --rainbow-2: #00ff00; --rainbow-3: #ffff00; --rainbow-4: #ff0000;
+  --gray-1: #060308; --gray-2: #555555; --gray-3: #aaaaaa; --gray-4: #fbf8fc;
+  --lava-1: #2b0f54; --lava-2: #c8323c; --lava-3: #f5751a; --lava-4: #fbd23c;
+  --arctic-1: #0b2a6f; --arctic-2: #5fc8e8; --arctic-3: #d9f6ff; --arctic-4: #ff7a1a;
+  --medical-1: #0000aa; --medical-2: #00aa00; --medical-3: #aaaa00; --medical-4: #aa0000;
+  --redhot-1: #222222; --redhot-2: #777777; --redhot-3: #cccccc; --redhot-4: #e01414;
+  /* trend series: validated categorical palette (dataviz reference, dark), fixed order */
+  --series-1: #d95926; --series-2: #3987e5; --series-3: #199e70; --series-4: #c98500;
+  --overlay-dew: #1f8bff; --overlay-mold: #ff4fd0;
+  --series-5: #d55181; --series-6: #0ca30c; --series-7: #9085e9; --series-8: #e66767;
+}
+@media (max-width: 40rem) { :root { --gutter: 16px; --gap-columns: 16px; --text-figure: 2.5rem; } }
+
+*, *::before, *::after { box-sizing: border-box; }
+html, body { overflow-x: clip; }
+html { scrollbar-color: var(--color-muted) var(--color-paper); }
+::selection { background: color-mix(in oklab, var(--color-accent) 30%, transparent); color: var(--color-ink); }
+body { caret-color: var(--color-accent); margin: 0; background: var(--color-paper); color: var(--color-ink); font-family: var(--font-body); font-size: var(--text-md); line-height: 1.55; -webkit-font-smoothing: antialiased; }
+:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 2px; }
+button, input { font: inherit; color: inherit; }
+img { display: block; max-width: 100%; }
+p { margin: 0; }
+h1, h2 { margin: 0; overflow-wrap: break-word; min-width: 0; text-wrap: balance; }
+.visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
+/* top bar */
+.bar { border-bottom: var(--rule-hair) solid var(--color-rule); }
+.bar .container { display: flex; align-items: center; justify-content: space-between; gap: var(--space-md); min-height: 64px; }
+.container { width: 100%; max-width: var(--container); margin-inline: auto; padding-inline: var(--gutter); }
+.wordmark { font-family: var(--font-display); font-weight: 400; font-size: var(--text-xl); line-height: 1.02; text-transform: uppercase;
+  text-shadow: -1.5px 0 0 var(--color-crt-r), 1.5px 0 0 var(--color-crt-c); }
+.live { font-weight: 700; font-size: var(--text-sm); color: var(--color-muted); text-align: right; }
+.live[data-state="live"] { color: var(--color-accent-2); }
+.live[data-state="error"] { color: var(--color-error); }
+
+/* layout */
+.cabinet { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-xl) var(--gap-columns); padding-block: var(--space-lg) var(--space-2xl); }
+@media (min-width: 60rem) { .cabinet { grid-template-columns: minmax(0, 7fr) minmax(0, 4fr); align-items: start; } }
+
+/* the screen */
+.screen { position: relative; isolation: isolate; aspect-ratio: 4 / 3; max-height: 80vh; margin-inline: auto; background: var(--color-screen); border: var(--rule-bar) solid var(--color-rule); border-radius: var(--radius-card); overflow: hidden; }
+.screen img { width: 100%; height: 100%; object-fit: contain; cursor: crosshair; }
+.screen::after { content: ""; position: absolute; inset: 0; pointer-events: none; z-index: 2;
+  background-image:
+    repeating-linear-gradient(to right, color-mix(in oklab, var(--color-crt-r) 5%, transparent) 0 1px, color-mix(in oklab, var(--color-crt-g) 5%, transparent) 1px 2px, color-mix(in oklab, var(--color-crt-b) 5%, transparent) 2px 3px),
+    repeating-linear-gradient(to bottom, transparent 0 2px, color-mix(in oklab, var(--color-shade) 16%, transparent) 2px 3px); }
+.notice { position: absolute; inset: 0; z-index: 1; display: grid; place-content: center; gap: var(--space-sm); padding: var(--space-lg); text-align: center; background: var(--color-screen); }
+.notice h2 { font-family: var(--font-display); font-weight: 400; font-size: var(--text-2xl); line-height: 1.02; text-transform: uppercase; color: var(--color-ink); }
+.notice p { color: var(--color-muted); max-width: 34ch; margin-inline: auto; }
+.screen[data-state="live"] .notice { display: none; }
+
+/* score line */
+.score { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); margin-top: var(--space-md); border-block: var(--rule-hair) solid var(--color-rule); }
+.score > div { padding: var(--space-sm) var(--space-md); min-width: 0; }
+.score > div + div { border-left: var(--rule-bar) solid var(--color-rule); }
+@media (max-width: 40rem) {
+  .score { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .score > div:nth-child(3) { border-left: 0; }
+  .score > div:nth-child(n+3) { border-top: var(--rule-hair) solid var(--color-rule); }
+}
+.score .label { font-weight: 700; font-size: var(--text-sm); color: var(--color-muted); }
+.figure { font-family: var(--font-outlier); font-weight: 700; font-size: var(--text-figure); line-height: 1.1; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.figure small { font-family: var(--font-body); font-weight: 700; font-size: var(--text-sm); margin-left: var(--space-2xs); color: var(--color-ink-2); }
+.hot { color: var(--color-accent); }
+.cold { color: var(--color-accent-2); }
+.score .figure:not(.hot):not(.cold) { color: var(--color-ink); }
+.meta { margin-top: var(--space-sm); font-size: var(--text-sm); color: var(--color-muted); }
+
+/* panel */
+.panel { display: grid; gap: var(--space-lg); }
+.group h2 { font-family: var(--font-body); font-weight: 900; font-size: var(--text-lg); letter-spacing: -0.02em; line-height: 1; margin-bottom: var(--space-sm); }
+
+.press { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: var(--space-xs) var(--space-md);
+  background: var(--color-accent); color: var(--color-accent-ink); border: var(--rule-bar) solid var(--color-ink); border-radius: var(--radius-card);
+  font-weight: 700; cursor: pointer; box-shadow: var(--shadow-press);
+  transition: translate var(--dur-micro) var(--ease-out), box-shadow var(--dur-micro) var(--ease-out); }
+.press:hover { translate: -1px -1px; box-shadow: 6px 6px 0 var(--color-accent-2); }
+.press:active { translate: 3px 3px; box-shadow: 2px 2px 0 var(--color-accent-2); }
+.press:disabled { opacity: 0.5; cursor: not-allowed; translate: none; box-shadow: var(--shadow-press); }
+.press[aria-busy="true"] { cursor: progress; }
+.press--ghost { background: transparent; color: var(--color-ink); }
+.actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-md); }
+
+/* two players: gain */
+.players { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-md); }
+.player { text-align: left; display: grid; gap: var(--space-2xs); padding: var(--space-sm) var(--space-md); min-height: 44px; cursor: pointer;
+  background: var(--color-paper-2); border: var(--rule-bar) solid var(--color-rule); border-top-width: 6px; border-radius: var(--radius-card);
+  transition: background-color var(--dur-micro) steps(1, jump-start); }
+.player--high { border-top-color: var(--color-accent); }
+.player--low { border-top-color: var(--color-accent-2); }
+.player strong { font-weight: 900; }
+.player span { font-size: var(--text-sm); color: var(--color-muted); }
+.player:hover { background: var(--color-paper-3); }
+.player[aria-pressed="true"] { background: var(--color-accent); color: var(--color-accent-ink); }
+.player--low[aria-pressed="true"] { background: var(--color-accent-2); }
+.player[aria-pressed="true"] span { color: var(--color-accent-ink); }
+
+/* palette menu */
+.menu { list-style: none; margin: 0; padding: 0; border-top: var(--rule-hair) solid var(--color-rule); }
+.menu button { width: 100%; display: flex; justify-content: space-between; align-items: center; min-height: 44px; padding: var(--space-xs) var(--space-md);
+  background: transparent; border: 0; border-bottom: var(--rule-hair) solid var(--color-rule); text-align: left; font-weight: 700; cursor: pointer;
+  transition: background-color var(--dur-micro) steps(1, jump-start); }
+.menu button:hover, .menu button[aria-current="true"] { background: var(--color-accent); color: var(--color-accent-ink); }
+.swatch { display: flex; width: 72px; height: 12px; border: var(--rule-hair) solid var(--color-rule); }
+.swatch i { flex: 1; }
+.sw-iron i:nth-child(1) { background: var(--iron-1); } .sw-iron i:nth-child(2) { background: var(--iron-2); }
+.sw-iron i:nth-child(3) { background: var(--iron-3); } .sw-iron i:nth-child(4) { background: var(--iron-4); }
+.sw-rainbow i:nth-child(1) { background: var(--rainbow-1); } .sw-rainbow i:nth-child(2) { background: var(--rainbow-2); }
+.sw-rainbow i:nth-child(3) { background: var(--rainbow-3); } .sw-rainbow i:nth-child(4) { background: var(--rainbow-4); }
+.sw-white i:nth-child(1), .sw-black i:nth-child(4) { background: var(--gray-1); }
+.sw-white i:nth-child(2), .sw-black i:nth-child(3) { background: var(--gray-2); }
+.sw-white i:nth-child(3), .sw-black i:nth-child(2) { background: var(--gray-3); }
+.sw-white i:nth-child(4), .sw-black i:nth-child(1) { background: var(--gray-4); }
+
+/* stepper and input */
+.stepper { display: flex; align-items: center; gap: var(--space-md); }
+.stepper .press { width: 44px; padding: 0; }
+.stepper .figure { min-width: 1.5ch; text-align: center; color: var(--color-accent-2); }
+.field { display: flex; gap: var(--space-md); align-items: stretch; }
+.field input { width: 120px; min-height: 52px; padding: 0 var(--space-sm); background: var(--color-paper); border: var(--rule-bar) solid var(--color-muted); border-radius: 0; font-weight: 700; }
+.field input:hover { border-color: var(--color-ink-2); }
+.field input:invalid { border-color: var(--color-error); }
+.hint { font-size: var(--text-sm); color: var(--color-muted); margin-top: var(--space-xs); }
+.link { color: var(--color-ink); text-decoration: underline; text-decoration-color: var(--color-accent-2); text-decoration-thickness: 2px; text-underline-offset: 0.2em; font-weight: 700; }
+.link:hover { text-decoration-color: var(--color-accent); }
+.screen[data-alarm="true"] { border-color: var(--color-accent-2); }
+.alarm { font-weight: 900; color: var(--color-accent-2); }
+.toggles { display: grid; gap: var(--space-2xs); }
+.toggle { display: flex; align-items: center; gap: var(--space-sm); min-height: 44px; font-weight: 700; cursor: pointer; }
+.toggle input { width: 22px; height: 22px; margin: 0; accent-color: var(--color-accent); cursor: pointer; }
+.toggle input:hover { outline: var(--rule-hair) solid var(--color-muted); }
+.field input.small { width: 96px; }
+.sw-lava i:nth-child(1) { background: var(--lava-1); }
+.sw-lava i:nth-child(2) { background: var(--lava-2); }
+.sw-lava i:nth-child(3) { background: var(--lava-3); }
+.sw-lava i:nth-child(4) { background: var(--lava-4); }
+.sw-arctic i:nth-child(1) { background: var(--arctic-1); }
+.sw-arctic i:nth-child(2) { background: var(--arctic-2); }
+.sw-arctic i:nth-child(3) { background: var(--arctic-3); }
+.sw-arctic i:nth-child(4) { background: var(--arctic-4); }
+.sw-medical i:nth-child(1) { background: var(--medical-1); }
+.sw-medical i:nth-child(2) { background: var(--medical-2); }
+.sw-medical i:nth-child(3) { background: var(--medical-3); }
+.sw-medical i:nth-child(4) { background: var(--medical-4); }
+.sw-redhot i:nth-child(1) { background: var(--redhot-1); }
+.sw-redhot i:nth-child(2) { background: var(--redhot-2); }
+.sw-redhot i:nth-child(3) { background: var(--redhot-3); }
+.sw-redhot i:nth-child(4) { background: var(--redhot-4); }
+
+/* measure + monitor */
+.screen.drawing img { cursor: cell; }
+.regions { width: 100%; border-collapse: collapse; margin-top: var(--space-sm); font-variant-numeric: tabular-nums; }
+.regions th, .regions td { text-align: left; padding: var(--space-2xs) var(--space-xs); border-bottom: var(--rule-hair) solid var(--color-rule); font-size: var(--text-sm); }
+.regions th { color: var(--color-muted); font-weight: 700; }
+.monitor { margin-top: var(--space-xl); }
+.monitor h2 { font-family: var(--font-body); font-weight: 900; font-size: var(--text-lg); letter-spacing: -0.02em; line-height: 1; margin-bottom: var(--space-sm); }
+.monitor .row { display: flex; flex-wrap: wrap; gap: var(--space-md); align-items: end; }
+.monitor label { display: grid; gap: var(--space-2xs); font-size: var(--text-sm); font-weight: 700; color: var(--color-muted); }
+.monitor input { width: 96px; min-height: 44px; padding: 0 var(--space-sm); background: var(--color-paper); color: var(--color-ink); border: var(--rule-bar) solid var(--color-muted); border-radius: 0; font-weight: 700; }
+.chart { position: relative; margin-top: var(--space-md); background: var(--color-paper-2); border: var(--rule-bar) solid var(--color-rule); border-radius: var(--radius-card); }
+.chart svg { display: block; width: 100%; height: 220px; }
+.chart .grid { stroke: var(--color-rule); stroke-width: 1; }
+.chart .tick { fill: var(--color-muted); font: 700 11px var(--font-body); }
+.chart .line { fill: none; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.chart .event { stroke: var(--color-muted); stroke-dasharray: 2 3; }
+.chart .cross { stroke: var(--color-ink-2); stroke-width: 1; }
+.chart .empty { fill: var(--color-muted); font: 700 13px var(--font-body); }
+.tip { position: absolute; top: var(--space-xs); pointer-events: none; background: var(--color-paper); border: var(--rule-hair) solid var(--color-rule); padding: var(--space-xs) var(--space-sm); font-size: var(--text-sm); font-variant-numeric: tabular-nums; }
+.tip[hidden] { display: none; }
+.legend { display: flex; flex-wrap: wrap; gap: var(--space-md); margin-top: var(--space-xs); font-size: var(--text-sm); font-weight: 700; }
+.legend i { display: inline-block; width: 12px; height: 4px; margin-right: var(--space-2xs); vertical-align: middle; }
+.results { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-xs) var(--space-md); margin-top: var(--space-sm); font-size: var(--text-sm); }
+.results b { display: block; font-size: var(--text-lg); font-variant-numeric: tabular-nums; }
+.results span { color: var(--color-muted); font-weight: 700; }
+.verdict { margin-top: var(--space-sm); font-weight: 900; }
+.verdict[data-level="ok"] { color: var(--color-accent-2); }
+.verdict[data-level="risk"] { color: var(--color-error); }
+.chip { display: inline-block; width: 12px; height: 12px; margin-right: var(--space-2xs); vertical-align: -1px; }
+.chip-dew { background: var(--overlay-dew); } .chip-mold { background: var(--overlay-mold); }
+.sev-1 { color: var(--color-ink-2); } .sev-2 { color: var(--color-accent-2); } .sev-3 { color: var(--color-accent); } .sev-4 { color: var(--color-error); font-weight: 900; }
+.inputs { display: flex; flex-wrap: wrap; gap: var(--space-md); align-items: end; margin-top: var(--space-sm); }
+.inputs label { display: grid; gap: var(--space-2xs); font-size: var(--text-sm); font-weight: 700; color: var(--color-muted); white-space: nowrap; }
+.inputs input, .inputs select { width: 96px; min-height: 44px; padding: 0 var(--space-xs); background: var(--color-paper); color: var(--color-ink); border: var(--rule-bar) solid var(--color-muted); border-radius: 0; font-weight: 700; }
+.inputs select { width: auto; max-width: 100%; }
+.inputs input:hover, .inputs select:hover { border-color: var(--color-ink-2); }
+/* viewer stays in view while the controls scroll */
+.cabinet > section { z-index: 2; align-self: start; background: var(--color-paper); color: var(--color-ink); }
+@media (max-width: 59.99rem) { .screen { max-height: 46vh; } }
+.screen canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+#gl { cursor: crosshair; touch-action: none; }
+#ov { pointer-events: none; z-index: 1; }
+.screen[data-mode="gl"] #view { display: none; }
+.probe { position: absolute; z-index: 3; margin: 0; padding: var(--space-2xs) var(--space-xs); background: var(--color-shade); color: var(--color-ink);
+  font-weight: 700; font-size: var(--text-sm); font-variant-numeric: tabular-nums; border-radius: var(--radius-card); pointer-events: none; }
+.capture { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-md); margin-top: var(--space-sm); }
+.capture .press[aria-pressed="true"] { background: var(--color-error); }
+.tabs { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--space-2xs); margin-bottom: var(--space-md); border-bottom: var(--rule-bar) solid var(--color-rule); }
+.tabs button { min-height: 44px; padding: var(--space-xs); background: transparent; color: var(--color-ink-2); border: 0; font-weight: 700; cursor: pointer;
+  transition: background-color var(--dur-micro) steps(1, jump-start); }
+.tabs button:hover { background: var(--color-paper-2); }
+.tabs button[aria-selected="true"] { background: var(--color-accent); color: var(--color-accent-ink); }
+.tabpanel { display: grid; gap: var(--space-lg); }
+.tabpanel .monitor { margin-top: 0; }
+/* app layout: the whole interface fits the window, only the panel scrolls */
+html, body { height: 100%; }
+body { display: flex; flex-direction: column; overflow: hidden; }
+.bar .container { min-height: 44px; }
+.cabinet { flex: 1; min-height: 0; padding-block: var(--space-sm); grid-template-rows: minmax(0, 1fr); }
+.cabinet > section { position: static; display: flex; flex-direction: column; min-height: 0; padding-top: 0; }
+.cabinet > section { align-self: stretch; height: 100%; }
+.screenbox { flex: 1 1 0; min-height: 0; container-type: size; display: grid; place-items: center; }
+.screenbox .screen { --ar: 1.3333; width: min(100cqw, calc(100cqh * var(--ar))); height: auto; max-height: none; aspect-ratio: var(--ar); }
+.cabinet .score > div { padding-block: var(--space-2xs); }
+.cabinet .figure { font-size: var(--text-2xl); font-variant-numeric: tabular-nums; }
+.panel { min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding-right: var(--space-2xs); align-content: start; }
+.tabs { position: sticky; top: 0; z-index: 1; background: var(--color-paper); }
+@media (max-width: 59.99rem) and (orientation: portrait) {
+  .cabinet { grid-template-rows: auto minmax(0, 1fr); gap: var(--space-sm); }
+  .cabinet > section { height: auto; }
+  .screenbox { flex: none; height: 44vh; }
+  .cabinet .meta, .cabinet .alarm:empty { display: none; }
+}
+/* capture feedback: a camera flash, a recording mark, a short confirmation */
+.flash { position: absolute; inset: 0; z-index: 4; background: var(--color-ink); opacity: 0; pointer-events: none; }
+.flash.on { animation: flash var(--dur-long) var(--ease-out); }
+@keyframes flash { from { opacity: 0.85; } to { opacity: 0; } }
+.rec { position: absolute; top: var(--space-xs); left: var(--space-xs); z-index: 3; margin: 0; padding: var(--space-2xs) var(--space-xs);
+  background: var(--color-error); color: var(--color-accent-ink); font-weight: 900; border-radius: var(--radius-card); animation: blink 1s steps(2, jump-none) infinite; }
+@keyframes blink { 50% { opacity: 0.35; } }
+.snack { position: absolute; left: 50%; bottom: var(--space-md); z-index: 4; margin: 0; transform: translateX(-50%); padding: var(--space-xs) var(--space-md);
+  background: var(--color-shade); color: var(--color-ink); font-weight: 700; border: var(--rule-hair) solid var(--color-rule); border-radius: var(--radius-card); white-space: nowrap; }
+@media (prefers-reduced-motion: reduce) { .flash.on, .rec { animation: none; } }
+/* phone held sideways: viewer full height on the left, controls on the right; no title bar */
+@media (orientation: landscape) and (max-height: 40rem) {
+  .bar { display: none; }
+  .cabinet { grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); grid-template-rows: minmax(0, 1fr); padding-block: var(--space-2xs); }
+  .cabinet > section { height: 100%; }
+  .screenbox { flex: 1 1 0; height: auto; }
+  .cabinet .score { margin-top: var(--space-2xs); }
+  .cabinet .score > div { padding: 0 var(--space-xs); }
+  .cabinet .figure { font-size: var(--text-lg); }
+  .cabinet .meta, .cabinet .alarm:empty { display: none; }
+  .capture { margin-top: var(--space-2xs); gap: var(--space-xs); }
+}
+.band { position: absolute; z-index: 3; border: var(--rule-bar) dashed var(--color-accent-2); pointer-events: none; }
+.clear-areas { position: absolute; left: var(--space-sm); bottom: var(--space-sm); z-index: 3; min-height: 40px; }
+#toast { min-height: 1.5em; font-size: var(--text-sm); color: var(--color-error); }
+
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; } }
+</style>
+</head>
+<body>
+<header class="bar">
+  <div class="container">
+    <span class="wordmark">Emberglass</span>
+    <p class="live" id="live" data-state="loading" role="status">Connecting</p>
+  </div>
+</header>
+
+<main class="container cabinet">
+  <section aria-label="Live thermal view">
+    <div class="screenbox">
+    <div class="screen" id="screen" data-state="loading">
+      <canvas id="gl" aria-label="Live thermal image. Tap to measure a spot, hover to read any pixel." hidden></canvas>
+      <canvas id="ov" aria-hidden="true" hidden></canvas>
+      <img id="view" src="stream" alt="Live thermal image. Tap to measure a spot.">
+      <p class="probe" id="probe" hidden></p>
+      <div class="flash" id="flash" aria-hidden="true"></div>
+      <p class="rec" id="recDot" hidden>Rec</p>
+      <p class="snack" id="snack" role="status" hidden></p>
+      <div class="band" id="band" hidden></div>
+      <button class="press press--ghost clear-areas" id="clearAreas" data-cmd="region&v=clear" hidden>Clear areas</button>
+      <div class="notice" id="notice">
+        <h2 id="noticeHead">Warming up</h2>
+        <p id="noticeText">The sensor calibrates itself for a few seconds.</p>
+      </div>
+    </div>
+    </div>
+    <div class="score">
+      <div><span class="label">Max</span><p class="figure hot"><span id="max">--</span><small>°C</small></p></div>
+      <div><span class="label">Min</span><p class="figure cold"><span id="min">--</span><small>°C</small></p></div>
+      <div><span class="label">Center</span><p class="figure"><span id="center">--</span><small>°C</small></p></div>
+      <div><span class="label">Spot</span><p class="figure"><span id="spot">--</span><small>°C</small></p></div>
+    </div>
+    <div class="capture">
+      <button class="press press--ghost" id="photoBtn">Photo</button>
+      <button class="press" id="recBtn">Record</button>
+      <button class="press press--ghost" data-cmd="rotate">Rotate 90°</button>
+    </div>
+    <p class="alarm" id="alarm" role="alert"></p>
+    <p class="meta" id="status"></p>
+
+  </section>
+
+  <aside class="panel" aria-label="Camera controls">
+    <div class="tabs" role="tablist" aria-label="Sections">
+      <button role="tab" id="tab-measure" aria-controls="p-measure" aria-selected="true">Measure</button>
+      <button role="tab" id="tab-pro" aria-controls="p-pro" aria-selected="false">Pro</button>
+      <button role="tab" id="tab-monitor" aria-controls="p-monitor" aria-selected="false">Monitor</button>
+      <button role="tab" id="tab-display" aria-controls="p-display" aria-selected="false">Display</button>
+    </div>
+    <div class="tabpanel" role="tabpanel" id="p-measure" aria-labelledby="tab-measure">
+    <div class="group">
+      <h2>Range</h2>
+      <div class="players">
+        <button class="player player--high" id="gainHigh" data-cmd="gain&v=1" aria-pressed="false"><strong>High gain</strong><span>−15 to 150 °C</span></button>
+        <button class="player player--low" id="gainLow" data-cmd="gain&v=0" aria-pressed="false"><strong>Low gain</strong><span>50 to 550 °C</span></button>
+      </div>
+    </div>
+    <div class="group">
+      <h2>Calibrate</h2>
+      <div class="actions">
+        <button class="press" data-cmd="ffc">Shutter FFC</button>
+        <button class="press press--ghost" data-cmd="rotate">Rotate 90°</button>
+        <button class="press press--ghost" data-cmd="flatfield" title="Aim at a uniform wall first">Flat-field</button>
+        <button class="press press--ghost" data-cmd="flatfield&v=clear">Clear flat-field</button>
+      </div>
+      <p class="hint">Aim at a plain wall before flat-field.</p>
+    </div>
+    <div class="group">
+      <h2 id="paletteHead">Palette</h2>
+      <ul class="menu" id="palette" aria-labelledby="paletteHead">
+        <li><button data-palette="iron">Iron<span class="swatch sw-iron" aria-hidden="true"><i></i><i></i><i></i><i></i></span></button></li>
+        <li><button data-palette="rainbow">Rainbow<span class="swatch sw-rainbow" aria-hidden="true"><i></i><i></i><i></i><i></i></span></button></li>
+        <li><button data-palette="white">White hot<span class="swatch sw-white" aria-hidden="true"><i></i><i></i><i></i><i></i></span></button></li>
+        <li><button data-palette="black">Black hot<span class="swatch sw-black" aria-hidden="true"><i></i><i></i><i></i><i></i></span></button></li>
+        <li><button data-palette="lava">Lava<span class="swatch sw-lava" aria-hidden="true"><i></i><i></i><i></i><i></i></span></button></li>
+        <li><button data-palette="arctic">Arctic<span class="swatch sw-arctic" aria-hidden="true"><i></i><i></i><i></i><i></i></span></button></li>
+        <li><button data-palette="medical">Medical<span class="swatch sw-medical" aria-hidden="true"><i></i><i></i><i></i><i></i></span></button></li>
+        <li><button data-palette="redhot">Red hot spots<span class="swatch sw-redhot" aria-hidden="true"><i></i><i></i><i></i><i></i></span></button></li>
+      </ul>
+    </div>
+    <div class="group">
+      <h2>Measure areas</h2>
+      <div class="actions">
+        <button class="press press--ghost" id="drawAreas" aria-pressed="false">Draw areas</button>
+        <button class="press press--ghost" data-cmd="region&v=clear">Clear areas</button>
+      </div>
+      <p class="hint">Draw areas, then drag on the image for a box or click for a point. Up to six.</p>
+      <table class="regions" id="regions" hidden>
+        <thead><tr><th>Area</th><th>Min</th><th>Max</th><th>Average</th><th class="col-b">fRsi</th><th class="col-e">ΔT, severity</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    </div>
+    <div class="tabpanel" role="tabpanel" id="p-pro" aria-labelledby="tab-pro" hidden>
+    <div class="group">
+      <h2>Building diagnostics</h2>
+      <label class="toggle"><input type="checkbox" data-set="buildingOn"> Condensation and mold risk, fRsi</label>
+      <div class="inputs">
+        <label>Indoor air, <span class="unit">°C</span> <input id="airC" type="number" step="0.1"></label>
+        <label>Indoor RH, % <input id="rh" type="number" min="1" max="100" step="1"></label>
+        <label>Outdoor air, <span class="unit">°C</span> <input id="outC" type="number" step="0.1"></label>
+        <button class="press press--ghost" id="buildingSet">Set</button>
+      </div>
+      <div class="results" id="buildingResults" hidden>
+        <div><span><i class="chip chip-dew"></i>Dew point</span><b id="dew">--</b></div>
+        <div><span><i class="chip chip-mold"></i>Mold limit</span><b id="mold">--</b></div>
+        <div><span>fRsi, coldest point</span><b id="fRsiMin">--</b></div>
+        <div><span>fRsi needed</span><b id="fRsiReq">--</b></div>
+      </div>
+      <p class="verdict" id="verdict" hidden></p>
+      <p class="hint">Blue pixels are below the dew point, pink ones over 80% surface humidity (EN ISO 13788). fRsi needs at least 10 °C between inside and outside, steady for hours.</p>
+    </div>
+    <div class="group">
+      <h2>Electrical inspection</h2>
+      <label class="toggle"><input type="checkbox" data-set="elecOn"> Rise of each area and severity</label>
+      <div class="inputs">
+        <label>Compare with
+          <select id="elecRef"><option value="area1">area 1, similar part</option><option value="ambient">ambient air</option></select>
+        </label>
+        <label>Rate alarm, <span class="unit">°C</span>/min <input id="rateAlarm" type="number" min="0" max="100" step="0.5"></label>
+        <button class="press press--ghost" id="rateSet">Set</button>
+      </div>
+      <p class="hint">Severity after NETA MTS Table 100.18. Ambient air is the indoor air temperature above. <span id="rateNow"></span></p>
+    </div>
+    <div class="group">
+      <h2><label for="ems">Emissivity</label></h2>
+      <div class="field">
+        <input id="ems" type="number" min="0.01" max="1" step="0.01" value="0.95" inputmode="decimal">
+        <button class="press" id="emsSet">Set</button>
+      </div>
+      <div class="inputs">
+        <label>Material
+          <select id="material">
+            <option value="">Choose a material</option>
+            <option>Matt paint 0.95</option><option>Brick 0.93</option><option>Concrete 0.94</option><option>Plaster 0.91</option>
+            <option>Wood 0.90</option><option>Glass 0.92</option><option>PVC 0.92</option><option>Rubber 0.93</option>
+            <option>Insulating tape 0.95</option><option>Skin 0.98</option><option>Water 0.96</option>
+            <option>Oxidised steel 0.80</option><option>Oxidised copper 0.65</option><option>Stainless steel 0.16</option><option>Oxidised aluminium 0.30</option>
+          </select>
+        </label>
+      </div>
+      <p class="hint">Typical values; for critical work stick tape on the target and measure that.</p>
+    </div>
+
+    </div>
+    <div class="tabpanel" role="tabpanel" id="p-monitor" aria-labelledby="tab-monitor" hidden>
+    <div class="monitor">
+      <h2>Monitoring</h2>
+      <div class="row">
+        <button class="press" id="monitorBtn">Start monitoring</button>
+        <label>Every, s <input id="logInterval" type="number" min="1" max="3600" step="1" inputmode="numeric"></label>
+        <label>Photo every, min <input id="snapshotMin" type="number" min="0" max="1440" step="1" inputmode="numeric"></label>
+        <button class="press press--ghost" id="monitorSave">Save</button>
+      </div>
+      <p class="hint" id="monitorInfo">Logs max, min, center, spot and every area to a CSV on the phone, also with the screen off.</p>
+      <div class="chart" id="chart">
+        <svg id="chartSvg" role="img" aria-label="Temperature over time"></svg>
+        <div class="tip" id="tip" hidden></div>
+      </div>
+      <div class="legend" id="legend"></div>
+      <p><a class="link" id="csv" href="log.csv" download>Download the log (CSV)</a></p>
+    </div>
+    </div>
+    <div class="tabpanel" role="tabpanel" id="p-display" aria-labelledby="tab-display" hidden>
+    <div class="group">
+      <h2>Display</h2>
+      <div class="toggles">
+        <label class="toggle"><input type="checkbox" data-set="markMax"> Mark the hottest point</label>
+        <label class="toggle"><input type="checkbox" data-set="markMin"> Mark the coldest point</label>
+        <label class="toggle"><input type="checkbox" data-set="markCenter"> Mark the center</label>
+        <label class="toggle"><input type="checkbox" data-set="scaleBar"> Color scale bar</label>
+        <label class="toggle"><input type="checkbox" data-set="equalize"> Detail-enhanced contrast</label>
+        <label class="toggle"><input type="checkbox" data-set="mirror"> Mirror the image</label>
+        <label class="toggle"><input type="checkbox" data-set="fahrenheit"> Show °F</label>
+        <label class="toggle"><input type="checkbox" data-set="alarmOn"> Alarm above the threshold</label>
+      </div>
+      <div class="field">
+        <label class="visually-hidden" for="alarmC">Alarm threshold</label>
+        <input class="small" id="alarmC" type="number" min="-40" max="600" step="1" inputmode="decimal">
+        <button class="press press--ghost" id="alarmSet">Set threshold, <span class="unit">°C</span></button>
+      </div>
+    </div>
+    <div class="group">
+      <h2 id="denoiseHead">Denoise</h2>
+      <div class="stepper" role="group" aria-labelledby="denoiseHead">
+        <button class="press press--ghost" id="denoiseDown" aria-label="Less denoise">−</button>
+        <span class="figure" id="denoise" aria-live="polite">1</span>
+        <button class="press press--ghost" id="denoiseUp" aria-label="More denoise">+</button>
+      </div>
+    </div>
+    </div>
+    <p><a class="link" href="raw" download="frame.raw">Download raw frame</a></p>
+    <p id="toast" role="alert"></p>
+  </aside>
+</main>
+
+<script>
+const $ = id => document.getElementById(id);
+let state = { denoise: 1 };
+// a PIN set on the phone travels as ?pin= on every request
+const PIN = new URLSearchParams(location.search).get('pin');
+const url = u => PIN ? u + (u.includes('?') ? '&' : '?') + 'pin=' + encodeURIComponent(PIN) : u;
+if (PIN) $('view').src = url('stream');
+document.querySelector('a[href="raw"]').href = url('raw');
+
+async function cmd(q, btn) {
+  if (btn) btn.setAttribute('aria-busy', 'true');
+  try {
+    const r = await (await fetch(url('cmd?name=' + q))).json();
+    $('toast').textContent = r.ok ? '' : r.error;
+  } catch (e) {
+    $('toast').textContent = 'Command not sent: the phone is not reachable.';
+  } finally {
+    if (btn) btn.removeAttribute('aria-busy');
+  }
+}
+
+document.querySelectorAll('[data-cmd]').forEach(b => b.onclick = () => cmd(b.dataset.cmd, b));
+document.querySelectorAll('[data-palette]').forEach(b => b.onclick = () => cmd('palette&v=' + b.dataset.palette, b));
+$('denoiseDown').onclick = e => cmd('denoise&v=' + Math.max(0, state.denoise - 1), e.currentTarget);
+$('denoiseUp').onclick = e => cmd('denoise&v=' + Math.min(3, state.denoise + 1), e.currentTarget);
+document.querySelectorAll('[data-set]').forEach(c => c.onchange = () => cmd('set&v=' + c.dataset.set + ':' + (c.checked ? 1 : 0), c));
+// temperatures go to the phone in Celsius; the inputs show the chosen unit
+const toC = v => unitF ? (v - 32) * 5 / 9 : v;
+$('alarmSet').onclick = e => { if ($('alarmC').checkValidity() && $('alarmC').value) cmd('set&v=alarmC:' + toC(+$('alarmC').value).toFixed(2), e.currentTarget); };
+let drawing = false, down = null;
+$('drawAreas').onclick = e => { drawing = !drawing; e.currentTarget.setAttribute('aria-pressed', drawing); $('screen').classList.toggle('drawing', drawing); };
+$('monitorBtn').onclick = e => cmd('monitor&v=' + (state.monitor && state.monitor.active ? 'stop' : 'start'), e.currentTarget);
+$('monitorSave').onclick = e => {
+  if ($('logInterval').value) cmd('set&v=logInterval:' + $('logInterval').value, e.currentTarget);
+  if ($('snapshotMin').value !== '') cmd('set&v=snapshotMin:' + $('snapshotMin').value, e.currentTarget);
+};
+$('csv').href = url('log.csv');
+$('material').onchange = e => { if (e.target.value) { $('ems').value = e.target.value.split(' ').pop(); cmd('emissivity&v=' + $('ems').value, e.target); } };
+$('buildingSet').onclick = e => {
+  if ($('airC').value) cmd('set&v=airC:' + toC(+$('airC').value).toFixed(2), e.currentTarget);
+  if ($('rh').value) cmd('set&v=rh:' + $('rh').value, e.currentTarget);
+  if ($('outC').value) cmd('set&v=outC:' + toC(+$('outC').value).toFixed(2), e.currentTarget);
+};
+$('elecRef').onchange = e => cmd('set&v=elecRef:' + e.target.value, e.target);
+// a rate is a difference: C/min -> F/min is x 9/5 with no offset
+$('rateSet').onclick = e => { if ($('rateAlarm').value !== '') cmd('set&v=rateAlarm:' + (unitF ? +$('rateAlarm').value * 5 / 9 : +$('rateAlarm').value).toFixed(2), e.currentTarget); };
+$('emsSet').onclick = e => { if ($('ems').checkValidity()) cmd('emissivity&v=' + $('ems').value, e.currentTarget); };
+let imgW = 256, imgH = 192;   // the displayed image, rotated like on the phone
+const px = e => {
+  const r = $('screen').getBoundingClientRect();
+  return [Math.max(0, Math.min(imgW - 1, Math.floor((e.clientX - r.left) / r.width * imgW))), Math.max(0, Math.min(imgH - 1, Math.floor((e.clientY - r.top) / r.height * imgH)))];
+};
+$('view').ondragstart = () => false;
+let downXY = null;
+const tapDown = e => { down = px(e); downXY = [e.clientX, e.clientY]; };
+// the box being drawn follows the pointer
+const bandMove = e => {
+  if (!drawing || !downXY || !(e.buttons & 1)) return;
+  const r = $('screen').getBoundingClientRect(), b = $('band');
+  const x0 = Math.min(downXY[0], e.clientX) - r.left, y0 = Math.min(downXY[1], e.clientY) - r.top;
+  b.style.left = x0 + 'px'; b.style.top = y0 + 'px';
+  b.style.width = Math.abs(e.clientX - downXY[0]) + 'px'; b.style.height = Math.abs(e.clientY - downXY[1]) + 'px';
+  b.hidden = false;
+};
+$('gl').addEventListener('pointermove', bandMove);
+$('view').addEventListener('pointermove', bandMove);
+$('gl').onpointerdown = $('view').onpointerdown = tapDown;
+$('gl').onpointerup = $('view').onpointerup = e => {
+  $('band').hidden = true; downXY = null;
+  if (!down) return;
+  const a = down, b = px(e);
+  down = null;
+  if (!drawing) return cmd('spot&v=' + b[0] + ',' + b[1]);
+  if (Math.abs(a[0] - b[0]) < 3 && Math.abs(a[1] - b[1]) < 3) return cmd('region&v=' + b[0] + ',' + b[1] + ',1,1');
+  cmd('region&v=' + Math.min(a[0], b[0]) + ',' + Math.min(a[1], b[1]) + ',' + (Math.abs(a[0] - b[0]) + 1) + ',' + (Math.abs(a[1] - b[1]) + 1));
+};
+// the MJPEG connection drops when the phone sleeps: reconnect
+// The MJPEG connection dies when the phone sleeps, and browsers often keep the last frame without an
+// error: reconnect on error, when the phone becomes reachable again, and when this tab is shown again.
+let offline = false;
+const reconnect = () => { if (GL) GL.reconnect(); else $('view').src = url('stream?t=' + Date.now()); };
+$('view').onerror = () => setTimeout(reconnect, 2000);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) reconnect(); });
+
+function show(screenState, head, text, liveText) {
+  $('screen').dataset.state = screenState;
+  $('live').dataset.state = screenState === 'live' ? 'live' : screenState === 'error' ? 'error' : 'loading';
+  $('live').textContent = liveText;
+  if (head) { $('noticeHead').textContent = head; $('noticeText').textContent = text; }
+  if (screenState !== 'live') ['max', 'min', 'center', 'spot'].forEach(id => $(id).textContent = '--');
+}
+
+let unitF = false;
+const f = v => (unitF ? v * 9 / 5 + 32 : v).toFixed(1);
+const fd = d => (unitF ? d * 9 / 5 : d).toFixed(1);   // a temperature difference
+async function poll() {
+  try {
+    const s = await (await fetch(url('temps'))).json();
+    state = s;
+    if (offline) { offline = false; reconnect(); }   // back from sleep or a lost network
+    unitF = s.settings.fahrenheit;
+    document.querySelectorAll('.score small').forEach(u => u.textContent = unitF ? '°F' : '°C');
+    const flag = k => k === 'buildingOn' ? s.building.on : k === 'elecOn' ? s.electrical.on : k in s ? s[k] : s.settings[k];
+    $('screen').style.setProperty('--ar', s.outW / s.outH);   // portrait or landscape image, as the phone shows it
+    imgW = s.outW; imgH = s.outH;
+    document.querySelectorAll('[data-set]').forEach(c => { if (document.activeElement !== c) c.checked = flag(c.dataset.set); });
+    document.querySelectorAll('.unit').forEach(u => u.textContent = unitF ? '°F' : '°C');
+    if (document.activeElement !== $('alarmC')) $('alarmC').value = f(s.settings.alarmC);
+    const tb = $('regions').querySelector('tbody');
+    $('regions').hidden = !s.settings || !s.regions.length;
+    $('clearAreas').hidden = !s.regions.length;
+    const B = s.building, E = s.electrical;
+    document.querySelectorAll('.col-b').forEach(c => c.hidden = !B.on);
+    document.querySelectorAll('.col-e').forEach(c => c.hidden = !E.on);
+    tb.replaceChildren(...s.regions.map((r, i) => {
+      const tr = document.createElement('tr');
+      [i + 1, r.min, r.max, r.avg].forEach((v, k) => { const td = document.createElement('td'); td.textContent = k === 0 ? v : (v === undefined ? '--' : f(v)); tr.append(td); });
+      const tb2 = document.createElement('td');
+      tb2.hidden = !B.on;
+      tb2.textContent = r.fRsi === undefined ? '--' : r.fRsi.toFixed(2) + (B.fRsiReq !== null && r.fRsi < B.fRsiReq ? ' risk' : '');
+      const te = document.createElement('td');
+      te.hidden = !E.on;
+      if (r.severity !== undefined) { te.textContent = fd(r.dT) + ', ' + r.severityText; te.className = 'sev-' + r.severity; }
+      else te.textContent = E.on && !E.vsAmbient && i === 0 ? 'reference' : '--';
+      tr.append(tb2, te);
+      return tr;
+    }));
+    for (const k of ['airC', 'outC']) if (document.activeElement !== $(k)) $(k).value = f(B[k]);
+    if (document.activeElement !== $('rh')) $('rh').value = B.rh;
+    if (document.activeElement !== $('elecRef')) $('elecRef').value = E.vsAmbient ? 'ambient' : 'area1';
+    if (document.activeElement !== $('rateAlarm')) $('rateAlarm').value = fd(s.rateAlarm);
+    $('rateNow').textContent = s.rateAlarm > 0 ? 'Max now rising ' + fd(s.rate) + (unitF ? ' °F' : ' °C') + ' per minute.' : '';
+    const live = !s.warming && s.frames > 0;
+    $('buildingResults').hidden = !(B.on && live);
+    $('verdict').hidden = !(B.on && live);
+    if (B.on && live) {
+      $('dew').textContent = f(B.dewC) + (unitF ? ' °F' : ' °C');
+      $('mold').textContent = f(B.moldC) + (unitF ? ' °F' : ' °C');
+      $('fRsiMin').textContent = B.fRsiMin === null ? '--' : B.fRsiMin.toFixed(2);
+      $('fRsiReq').textContent = B.fRsiReq === null ? '--' : B.fRsiReq.toFixed(2);
+      const risk = B.fRsiMin !== null && B.fRsiMin < B.fRsiReq;
+      $('verdict').dataset.level = risk ? 'risk' : 'ok';
+      $('verdict').textContent = (risk ? 'Mold risk: the coldest point is below the required fRsi.' : 'No mold risk at the coldest point.')
+        + (B.valid ? '' : ' Inside-outside difference under 10 °C: not reliable.');
+    }
+    const rec = s.recording || {};
+    $('recBtn').textContent = rec.on ? 'Stop ' + Math.floor(rec.seconds / 60) + ':' + String(rec.seconds % 60).padStart(2, '0') : 'Record';
+    $('recBtn').setAttribute('aria-pressed', !!rec.on);
+    $('recDot').hidden = !rec.on;
+    if (rec.on && !wasRecording) snack('Recording, ' + rec.codec);
+    if (!rec.on && wasRecording) snack('Video saved on the phone');
+    wasRecording = !!rec.on;
+    const m = s.monitor;
+    $('monitorBtn').textContent = m.active ? 'Stop monitoring' : 'Start monitoring';
+    if (document.activeElement !== $('logInterval')) $('logInterval').value = m.intervalSec;
+    if (document.activeElement !== $('snapshotMin')) $('snapshotMin').value = m.snapshotMin;
+    $('monitorInfo').textContent = m.active
+      ? 'Recording since ' + new Date(m.startMs).toLocaleString() + ': ' + m.rows + ' samples in ' + m.file + '.'
+      : (m.rows ? 'Last session: ' + m.rows + ' samples in ' + m.file + '.' : 'Logs max, min, center, spot and every area to a CSV on the phone, also with the screen off.');
+    regionCount = s.regions.length;
+    $('screen').dataset.alarm = s.alarm;
+    $('alarm').textContent = !s.alarm ? '' : s.rateHigh ? 'Alarm: the max is rising ' + fd(s.rate) + (unitF ? ' °F' : ' °C') + ' per minute.'
+      : 'Alarm: something is above ' + f(s.settings.alarmC) + (unitF ? ' °F' : ' °C') + '.';
+    if (s.phase === 'disconnected') show('empty', 'Camera disconnected', 'Plug the thermal camera into the phone.', 'No camera');
+    else if (s.phase === 'connecting') show('loading', 'Connecting', 'Opening the USB camera.', 'Connecting');
+    else if (s.warming || s.frames === 0) show('loading', 'Warming up', 'The sensor calibrates itself for a few seconds.', 'Warming up');
+    else {
+      show('live', null, null, 'Live, ' + s.fps.toFixed(0) + ' fps');
+      $('max').textContent = f(s.max); $('min').textContent = f(s.min);
+      $('center').textContent = f(s.center); $('spot').textContent = f(s.spot);
+    }
+    const parts = [s.status];
+    if (s.emissivity) parts.push('emissivity ' + s.emissivity);
+    if (s.sensorVtemp >= 0) parts.push('sensor ' + s.sensorVtemp);
+    if (s.serial) parts.push('SN ' + s.serial);
+    $('status').textContent = parts.join(', ');
+    $('gainHigh').setAttribute('aria-pressed', s.gain === 'high');
+    $('gainLow').setAttribute('aria-pressed', s.gain === 'low');
+    document.querySelectorAll('[data-palette]').forEach(b => b.setAttribute('aria-current', b.dataset.palette === s.palette));
+    $('denoise').textContent = s.denoise;
+    $('denoiseDown').disabled = s.denoise <= 0;
+    $('denoiseUp').disabled = s.denoise >= 3;
+  } catch (e) {
+    offline = true;
+    show('error', 'Signal lost', 'The phone is not reachable. Check it is on the same Wi-Fi and the app is open.', 'Offline');
+  }
+  setTimeout(poll, 400);
+}
+poll();
+
+// --- trend chart ----------------------------------------------------------------------
+let samples = [], events = [], since = 0, startMs = 0, regionCount = 0;
+const NAMES = ['Max', 'Min', 'Area 1', 'Area 2', 'Area 3', 'Area 4', 'Area 5', 'Area 6'];
+const COL = k => k < 2 ? k + 1 : k + 3;   // sample columns: t, max, min, center, spot, r1..r6
+const svgNS = 'http://www.w3.org/2000/svg';
+const el = (n, a) => { const x = document.createElementNS(svgNS, n); for (const k in a) x.setAttribute(k, a[k]); return x; };
+let geo = null;
+
+async function history() {
+  try {
+    const h = await (await fetch(url('history?since=' + since))).json();
+    if (h.startMs !== startMs) { samples = []; events = []; startMs = h.startMs; }
+    samples.push(...h.samples);
+    events.push(...h.events);
+    if (samples.length) since = samples[samples.length - 1][0];
+    if (h.events.length) since = Math.max(since, h.events[h.events.length - 1][0]);
+    draw();
+  } catch (e) { /* poll() reports the connection */ }
+  setTimeout(history, 3000);
+}
+
+function draw() {
+  const svg = $('chartSvg');
+  const W = svg.clientWidth || 600, H = 220, L = 48, R = 12, T = 12, B = 28;
+  svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H);
+  svg.replaceChildren();
+  const series = Math.min(8, 2 + regionCount);
+  if (samples.length < 2) {
+    svg.append(Object.assign(el('text', { x: L, y: H / 2, class: 'empty' }), { textContent: startMs ? 'Collecting the first samples.' : 'Start monitoring to record a trend.' }));
+    $('legend').replaceChildren();
+    geo = null;
+    return;
+  }
+  let lo = Infinity, hi = -Infinity;
+  for (const s of samples) for (let k = 0; k < series; k++) { const v = s[COL(k)]; if (v != null) { lo = Math.min(lo, v); hi = Math.max(hi, v); } }
+  if (hi - lo < 1) { hi += 0.5; lo -= 0.5; }
+  const t0 = samples[0][0], t1 = samples[samples.length - 1][0];
+  const X = t => L + (t - t0) / Math.max(1e-3, t1 - t0) * (W - L - R), Y = v => T + (hi - v) / (hi - lo) * (H - T - B);
+  for (let i = 0; i <= 3; i++) {
+    const v = lo + (hi - lo) * i / 3, y = Y(v);
+    svg.append(el('line', { x1: L, x2: W - R, y1: y, y2: y, class: 'grid' }));
+    svg.append(Object.assign(el('text', { x: 4, y: y + 4, class: 'tick' }), { textContent: f(v) }));
+  }
+  const span = t1 - t0;
+  svg.append(Object.assign(el('text', { x: L, y: H - 8, class: 'tick' }), { textContent: span < 120 ? span.toFixed(0) + ' s' : span < 7200 ? (span / 60).toFixed(0) + ' min' : (span / 3600).toFixed(1) + ' h' }));
+  for (const [t] of events) if (t >= t0 && t <= t1) svg.append(el('line', { x1: X(t), x2: X(t), y1: T, y2: H - B, class: 'event' }));
+  for (let k = 0; k < series; k++) {
+    let d = '', pen = false;
+    for (const s of samples) {
+      const v = s[COL(k)];
+      if (v == null) { pen = false; continue; }
+      d += (pen ? 'L' : 'M') + X(s[0]).toFixed(1) + ' ' + Y(v).toFixed(1);
+      pen = true;
+    }
+    svg.append(el('path', { d, class: 'line', stroke: 'var(--series-' + (k + 1) + ')' }));
+  }
+  svg.append(el('line', { id: 'cross', x1: 0, x2: 0, y1: T, y2: H - B, class: 'cross', visibility: 'hidden' }));
+  $('legend').replaceChildren(...Array.from({ length: series }, (_, k) => {
+    const sp = document.createElement('span'), i = document.createElement('i');
+    i.style.background = 'var(--series-' + (k + 1) + ')';
+    sp.append(i, NAMES[k]);
+    return sp;
+  }));
+  geo = { X, t0, t1, L, R, W, series };
+}
+
+$('chartSvg').onpointermove = e => {
+  if (!geo) return;
+  const r = $('chartSvg').getBoundingClientRect();
+  const x = (e.clientX - r.left) / r.width * geo.W;
+  const t = geo.t0 + (x - geo.L) / (geo.W - geo.L - geo.R) * (geo.t1 - geo.t0);
+  let best = samples[0];
+  for (const s of samples) if (Math.abs(s[0] - t) < Math.abs(best[0] - t)) best = s;
+  const cx = geo.X(best[0]);
+  const cross = document.getElementById('cross');
+  cross.setAttribute('x1', cx); cross.setAttribute('x2', cx); cross.setAttribute('visibility', 'visible');
+  const when = new Date(startMs + best[0] * 1000).toLocaleTimeString();
+  const lines = [when];
+  for (let k = 0; k < geo.series; k++) { const v = best[COL(k)]; if (v != null) lines.push(NAMES[k] + ' ' + f(v) + (unitF ? ' °F' : ' °C')); }
+  const ev = events.filter(([et]) => Math.abs(et - best[0]) <= (geo.t1 - geo.t0) / 100).map(x => x[1]);
+  $('tip').textContent = lines.concat(ev).join('\n');
+  $('tip').style.whiteSpace = 'pre';
+  $('tip').hidden = false;
+  $('tip').style.left = Math.min(r.width - 180, Math.max(0, cx / geo.W * r.width + 12)) + 'px';
+};
+$('chartSvg').onpointerleave = () => { $('tip').hidden = true; const c = document.getElementById('cross'); if (c) c.setAttribute('visibility', 'hidden'); };
+window.addEventListener('resize', draw);
+history();
+// --- live view: radiometric WebSocket + WebGL2, MJPEG as the fallback ---------------------
+const GL = (() => {
+  const canvas = $('gl'), ov = $('ov'), gl = canvas.getContext('webgl2', { antialias: false, premultipliedAlpha: false });
+  if (!gl || !('DecompressionStream' in window)) return null;
+  const VS = `#version 300 es
+in vec2 aPos; in vec2 aUv; out vec2 uv;
+void main() { gl_Position = vec4(aPos, 0.0, 1.0); uv = aUv; }`;
+  const FS = `#version 300 es
+precision highp float;
+uniform highp sampler2D uVals; uniform highp sampler2D uCurve; uniform sampler2D uLut;
+uniform float uLo, uHi, uAlarm, uDew, uMold; uniform int uEq, uIso, uBld;
+uniform vec3 uAlarmC, uDewC, uMoldC;
+in vec2 uv; out vec4 o;
+float val(ivec2 p) { return texelFetch(uVals, clamp(p, ivec2(0), ivec2(255, 191)), 0).r; }
+vec4 cr(float t) { float t2 = t * t, t3 = t2 * t;
+  return vec4(-0.5*t3 + t2 - 0.5*t, 1.5*t3 - 2.5*t2 + 1.0, -1.5*t3 + 2.0*t2 + 0.5*t, 0.5*t3 - 0.5*t2); }
+float bicubic(vec2 st) {
+  vec2 p = st * vec2(256.0, 192.0) - 0.5; vec2 f = fract(p); ivec2 b = ivec2(floor(p));
+  vec4 wx = cr(f.x), wy = cr(f.y); float r = 0.0;
+  for (int j = 0; j < 4; j++) { float row = 0.0;
+    for (int i = 0; i < 4; i++) row += wx[i] * val(b + ivec2(i - 1, j - 1));
+    r += wy[j] * row; }
+  return r; }
+void main() {
+  float v = bicubic(uv);
+  if (uIso == 1 && v >= uAlarm) { o = vec4(uAlarmC, 1.0); return; }
+  if (uBld == 1 && v <= uDew) { o = vec4(uDewC, 1.0); return; }
+  if (uBld == 1 && v <= uMold) { o = vec4(uMoldC, 1.0); return; }
+  float f = clamp((v - uLo) / max(uHi - uLo, 0.5), 0.0, 1.0), idx = f;
+  if (uEq == 1) { float x = f * 512.0 - 0.5; float x0 = clamp(floor(x), 0.0, 511.0);
+    float a = texelFetch(uCurve, ivec2(int(x0), 0), 0).r, b = texelFetch(uCurve, ivec2(int(min(x0 + 1.0, 511.0)), 0), 0).r;
+    idx = mix(a, b, clamp(x - x0, 0.0, 1.0)) / 255.0; }
+  o = texture(uLut, vec2((idx * 255.0 + 0.5) / 256.0, 0.5));
+}`;
+  const sh = (t, src) => { const x = gl.createShader(t); gl.shaderSource(x, src); gl.compileShader(x);
+    if (!gl.getShaderParameter(x, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(x)); return x; };
+  const prog = gl.createProgram();
+  gl.attachShader(prog, sh(gl.VERTEX_SHADER, VS)); gl.attachShader(prog, sh(gl.FRAGMENT_SHADER, FS)); gl.linkProgram(prog);
+  const tex = (filter) => { const t = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, t);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, filter); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, filter);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE); return t; };
+  const tVals = tex(gl.NEAREST), tCurve = tex(gl.NEAREST), tLut = tex(gl.LINEAR);
+  const buf = gl.createBuffer();
+  const u = n => gl.getUniformLocation(prog, n);
+  const rgb = c => [((c >> 16) & 255) / 255, ((c >> 8) & 255) / 255, (c & 255) / 255];
+  const frame = { temps: null, s: null };
+
+  // displayed image <-> sensor, as on the phone (Thermal.toSensorF)
+  const toSensor = (s, dx, dy) => {
+    let x, y;
+    switch (s.quarter) { case 1: x = dy; y = 192 - dx; break; case 2: x = 256 - dx; y = 192 - dy; break; case 3: x = 256 - dy; y = dx; break; default: x = dx; y = dy; }
+    if (s.mirror) x = 256 - x;
+    return [x, y];
+  };
+  const toDisplay = (s, x, y) => {
+    if (s.mirror) x = 256 - x;
+    switch (s.quarter) { case 1: return [192 - y, x]; case 2: return [256 - x, 192 - y]; case 3: return [y, 256 - x]; default: return [x, y]; }
+  };
+
+  function draw(s, temps, lut, curve) {
+    const dpr = window.devicePixelRatio || 1, w = Math.round(canvas.clientWidth * dpr), h = Math.round(canvas.clientHeight * dpr);
+    if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; ov.width = w; ov.height = h; }
+    gl.viewport(0, 0, w, h);
+    gl.useProgram(prog);
+    gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, tVals);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.R32F, 256, 192, 0, gl.RED, gl.FLOAT, temps);
+    gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, tCurve);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.R32F, 512, 1, 0, gl.RED, gl.FLOAT, curve);
+    gl.activeTexture(gl.TEXTURE2); gl.bindTexture(gl.TEXTURE_2D, tLut);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, 256, 1, 0, gl.RGB, gl.UNSIGNED_BYTE, lut);
+    gl.uniform1i(u('uVals'), 0); gl.uniform1i(u('uCurve'), 1); gl.uniform1i(u('uLut'), 2);
+    gl.uniform1f(u('uLo'), s.viewLo); gl.uniform1f(u('uHi'), s.viewHi); gl.uniform1i(u('uEq'), s.viewEq ? 1 : 0);
+    gl.uniform1i(u('uIso'), s.settings.alarmOn ? 1 : 0); gl.uniform1f(u('uAlarm'), s.settings.alarmC);
+    gl.uniform1i(u('uBld'), s.building.on ? 1 : 0); gl.uniform1f(u('uDew'), s.building.dewC); gl.uniform1f(u('uMold'), s.building.moldC);
+    gl.uniform3fv(u('uAlarmC'), rgb(0xd5e51b)); gl.uniform3fv(u('uDewC'), rgb(0x1f8bff)); gl.uniform3fv(u('uMoldC'), rgb(0xff4fd0));
+    const ow = s.outW, oh = s.outH, q = [];
+    for (const [px, py, dx, dy] of [[-1, -1, 0, oh], [1, -1, ow, oh], [-1, 1, 0, 0], [1, 1, ow, 0]]) {
+      const [sx, sy] = toSensor(s, dx, dy); q.push(px, py, sx / 256, sy / 192);
+    }
+    gl.bindBuffer(gl.ARRAY_BUFFER, buf); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(q), gl.STREAM_DRAW);
+    const aPos = gl.getAttribLocation(prog, 'aPos'), aUv = gl.getAttribLocation(prog, 'aUv');
+    gl.enableVertexAttribArray(aPos); gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 16, 0);
+    gl.enableVertexAttribArray(aUv); gl.vertexAttribPointer(aUv, 2, gl.FLOAT, false, 16, 8);
+    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+    overlay(s, w / ow);
+  }
+
+  // markers, areas and labels over the image (the phone's Overlay, in canvas 2D)
+  const C = ov.getContext('2d');
+  function overlay(s, k) {
+    C.clearRect(0, 0, ov.width, ov.height);
+    const z = v => v * k / 3, font = px => `700 ${z(px)}px ui-sans-serif, system-ui, sans-serif`;
+    const pill = (text, x, y, color) => {
+      C.font = font(22); const w = C.measureText(text).width, p = z(6);
+      x = Math.max(p, Math.min(x, ov.width - w - p)); y = Math.max(z(22), Math.min(y, ov.height - p));
+      C.fillStyle = 'rgba(0,0,0,0.7)'; C.fillRect(x - p, y - z(20), w + 2 * p, z(26));
+      C.fillStyle = color; C.fillText(text, x, y);
+    };
+    const mark = (sx, sy, color, label) => {
+      const [dx, dy] = toDisplay(s, sx + 0.5, sy + 0.5), x = dx * k, y = dy * k, r = z(14);
+      C.lineWidth = z(6); C.strokeStyle = 'rgba(0,0,0,0.8)'; C.beginPath(); C.moveTo(x - r, y); C.lineTo(x + r, y); C.moveTo(x, y - r); C.lineTo(x, y + r); C.stroke();
+      C.lineWidth = z(3); C.strokeStyle = color; C.stroke();
+      pill(label, x + z(16), y < z(40) ? y + z(36) : y - z(12), color);
+    };
+    if (s.warming || !s.frames) return;
+    const set = s.settings;
+    if (set.markMax) mark(s.maxX, s.maxY, '#ff5a4a', f(s.max) + unit());
+    if (set.markMin) mark(s.minX, s.minY, '#38d5ff', f(s.min) + unit());
+    if (set.markCenter) mark(128, 96, '#ffffff', f(s.center) + unit());
+    if (set.markSpot) mark(s.spotX, s.spotY, '#ffffff', f(s.spot) + unit());
+    s.regions.forEach((r, i) => {
+      const [ax, ay] = toDisplay(s, r.x, r.y), [bx, by] = toDisplay(s, r.x + r.w, r.y + r.h);
+      const x = Math.min(ax, bx) * k, y = Math.min(ay, by) * k, w = Math.abs(ax - bx) * k, h = Math.abs(ay - by) * k;
+      C.lineWidth = z(2); C.strokeStyle = '#fff';
+      if (r.w === 1 && r.h === 1) { C.beginPath(); C.arc(x, y, z(9), 0, 7); C.stroke(); }
+      else C.strokeRect(x, y, w, h);
+      if (r.max !== undefined) pill((i + 1) + '  max ' + f(r.max) + unit() + (r.w > 1 ? '  avg ' + f(r.avg) + unit() : ''), x + z(2), y > z(34) ? y - z(8) : y + h + z(28), '#fff');
+    });
+    if (s.alarm) pill(s.rateHigh ? 'Rising ' + fd(s.rate) + unit() + '/min' : 'Alarm', z(10), ov.height - z(14), '#d5e51b');   // max/min are in the readings
+    if (s.building.on) {
+      pill('condensation <= ' + f(s.building.dewC) + unit() + ': ' + (s.building.dewShare * 100).toFixed(1) + '%', z(10), z(30), '#1f8bff');
+      pill('mold risk <= ' + f(s.building.moldC) + unit() + ': ' + (s.building.moldShare * 100).toFixed(1) + '%', z(10), z(62), '#ff4fd0');
+    }
+  }
+
+  // hover: the real temperature of any pixel, from the radiometric data
+  canvas.addEventListener('pointermove', e => {
+    if (!frame.temps || !frame.s) return;
+    const r = canvas.getBoundingClientRect(), s = frame.s;
+    const dx = (e.clientX - r.left) / r.width * s.outW, dy = (e.clientY - r.top) / r.height * s.outH;
+    const [sx, sy] = toSensor(s, dx, dy), i = Math.min(191, Math.max(0, sy | 0)) * 256 + Math.min(255, Math.max(0, sx | 0));
+    const p = $('probe'); p.hidden = false; p.textContent = f(frame.temps[i]) + unit();
+    p.style.left = Math.min(r.width - 80, e.clientX - r.left + 14) + 'px'; p.style.top = Math.max(0, e.clientY - r.top - 34) + 'px';
+  });
+  canvas.addEventListener('pointerleave', () => { $('probe').hidden = true; });
+
+  let ws = null;
+  function connect() {
+    ws = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + url('/ws'));
+    ws.binaryType = 'arraybuffer';
+    ws.onmessage = async e => {
+      const b = e.data, n = new DataView(b).getUint32(0, true);
+      const s = JSON.parse(new TextDecoder().decode(new Uint8Array(b, 4, n)));
+      const lut = new Uint8Array(b, 4 + n, 768), c8 = new Uint8Array(b, 4 + n + 768, 512);
+      const raw = await new Response(new Blob([new Uint8Array(b, 4 + n + 1280)]).stream().pipeThrough(new DecompressionStream('deflate'))).arrayBuffer();
+      const u16 = new Uint16Array(raw), temps = new Float32Array(u16.length);
+      for (let i = 0; i < u16.length; i++) temps[i] = u16[i] / 100 - 100;
+      const curve = new Float32Array(512); for (let i = 0; i < 512; i++) curve[i] = c8[i];
+      frame.temps = temps; frame.s = s;
+      unitF = s.settings.fahrenheit;
+      requestAnimationFrame(() => draw(s, temps, lut, curve));
+    };
+    ws.onclose = () => setTimeout(connect, 2000);
+  }
+  return { start() {
+    $('screen').dataset.mode = 'gl'; canvas.hidden = false; ov.hidden = false;
+    $('view').removeAttribute('src');   // stop the MJPEG: the phone no longer encodes JPEGs for this page
+    connect();
+  }, reconnect() { if (ws && ws.readyState > 1) connect(); } };
+})();
+const unit = () => unitF ? ' °F' : ' °C';
+if (GL) GL.start();
+
+// tabs: one section at a time; the open tab is remembered in this browser
+const tabs = [...document.querySelectorAll('[role="tab"]')];
+function openTab(t) {
+  tabs.forEach(x => { const on = x === t; x.setAttribute('aria-selected', on); x.tabIndex = on ? 0 : -1; $(x.getAttribute('aria-controls')).hidden = !on; });
+  try { localStorage.setItem('emberglass-tab', t.id); } catch (e) { /* storage may be unavailable */ }
+}
+tabs.forEach((t, i) => {
+  t.onclick = () => openTab(t);
+  t.onkeydown = e => { const d = e.key === 'ArrowRight' ? 1 : e.key === 'ArrowLeft' ? -1 : 0; if (d) { const n = tabs[(i + d + tabs.length) % tabs.length]; openTab(n); n.focus(); } };
+});
+try { const saved = $(localStorage.getItem('emberglass-tab') || ''); if (saved) openTab(saved); } catch (e) { /* default tab */ }
+
+// capture
+let snackTimer;
+const snack = text => { const n = $('snack'); n.textContent = text; n.hidden = false; clearTimeout(snackTimer); snackTimer = setTimeout(() => { n.hidden = true; }, 3000); };
+$('photoBtn').onclick = async e => {
+  const b = e.currentTarget, fl = $('flash'); b.setAttribute('aria-busy', 'true');
+  fl.classList.remove('on'); void fl.offsetWidth; fl.classList.add('on');   // restart the flash
+  try { const r = await (await fetch(url('cmd?name=photo'))).json(); snack(r.ok ? 'Photo saved on the phone' : r.error); }
+  catch (x) { snack('Photo not taken: the phone is not reachable'); }
+  finally { b.removeAttribute('aria-busy'); }
+};
+let wasRecording = false;
+$('recBtn').onclick = e => cmd('record', e.currentTarget);
+</script>
+</body>
+</html>
