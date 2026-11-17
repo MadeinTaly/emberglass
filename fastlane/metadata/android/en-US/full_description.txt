@@ -1,0 +1,28 @@
+Emberglass is an app for USB-C thermal cameras built on the InfiRay Tiny1-C module (256×192, 25 fps), such as the P2 Pro and TC001 family. It reads the camera's full radiometric data directly through Linux usbfs, with no vendor SDK and no Google services.
+
+<b>Image</b>
+<ul>
+<li>GPU rendering with bicubic upscaling, eight palettes, detail-enhanced contrast and isotherms</li>
+<li>All four phone orientations; landscape works like a camera</li>
+</ul>
+
+<b>Measuring</b>
+<ul>
+<li>Max, min, center and tap-to-measure spot, up to six measurement areas</li>
+<li>Emissivity (with a materials table), reflected and ambient temperature, distance</li>
+<li>Two ranges: −15…150 °C or 50…550 °C</li>
+</ul>
+
+<b>Building diagnostics</b>: condensation and mold-risk pixels (EN ISO 13788), temperature factor fRsi.
+
+<b>Electrical inspection</b>: ΔT over a reference area or ambient air, severity levels, rate alarm.
+
+<b>Capture and monitoring</b>
+<ul>
+<li>Photos as JPEG plus a radiometric TIFF (32-bit °C per pixel), video in H.265 or H.264</li>
+<li>CSV logging for hours, also with the screen off, with optional time-lapse and trend graph</li>
+</ul>
+
+<b>Web viewer</b>: an optional page on the local network shows the live image, with the temperature of any pixel under the cursor, plus an MJPEG stream for VLC or OBS. No authentication by default; an optional PIN is available.
+
+Tested with USB ID 0bda:5840. Cameras with ID 0bda:5830 use the same module but are untested.

@@ -2,6 +2,8 @@
 
 # Emberglass
 
+[![Release](https://img.shields.io/github/v/release/MadeinTaly/emberglass)](https://github.com/MadeinTaly/emberglass/releases/latest) [![License: MIT](https://img.shields.io/github/license/MadeinTaly/emberglass)](LICENSE) [![Downloads](https://img.shields.io/github/downloads/MadeinTaly/emberglass/total)](https://github.com/MadeinTaly/emberglass/releases)
+
 *Memento ardere.*
 
 An Android app for USB-C thermal cameras built on the InfiRay Tiny1-C module (256×192, 25 fps). It reads the camera's full radiometric data, draws it on the GPU, and streams it to any browser on your network, with tools for building diagnostics, electrical inspection and long-term monitoring.

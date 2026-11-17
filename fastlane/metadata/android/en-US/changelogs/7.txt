@@ -1,0 +1,13 @@
+First public release.
+
+Android app for InfiRay Tiny1-C USB thermal cameras (0bda:5840, P2 Pro / TC001 family).
+
+- GPU rendering of the radiometric data: bicubic upscaling, palettes, detail-enhanced contrast, isotherms
+- Browser streaming with the real temperature under the cursor (WebSocket + WebGL); MJPEG for VLC and Home Assistant
+- Building diagnostics: dew point, mold risk (EN ISO 13788), fRsi
+- Electrical inspection: ΔT and NETA-style severity, rate alarm
+- Up to six measurement areas
+- Photo with a radiometric float32 TIFF, video in H.265 or H.264
+- Long-term monitoring with CSV log and trend graph, also with the screen off
+- All four phone orientations; landscape works like a camera
+
